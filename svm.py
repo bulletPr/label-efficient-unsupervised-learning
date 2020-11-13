@@ -1,4 +1,3 @@
-
 #
 #
 #      0=================================0
@@ -27,8 +26,12 @@ from glob import glob
 from sklearn.svm import LinearSVC
 
 def ResizeDataset(path, percentage, n_classes, shuffle):
-    original_name = ['train0.h5', 'train1.h5', 'train2.h5', 
-    'train3.h5', 'train4.h5', 'train5.h5', 'train6.h5', 'train7.h5']
+    if path == 'cache/modelnet40/features/':
+        original_name = ['train0.h5', 'train1.h5', 'train2.h5', 
+        'train3.h5', 'train4.h5']
+    else:
+        original_name = ['train0.h5', 'train1.h5', 'train2.h5', 
+        'train3.h5', 'train4.h5', 'train5.h5', 'train6.h5', 'train7.h5']
     for h5_name in original_name:
         ori_name = os.path.join(path, h5_name)
         out_file_name= ori_name + "_" + str(percentage)+ "_resized.h5"
@@ -52,8 +55,8 @@ def ResizeDataset(path, percentage, n_classes, shuffle):
         class_dist= np.zeros(n_classes)
         for c in range(len(data)):
             class_dist[cls_label[c]]+=1
-        print('Ori data to size of :', np.sum(class_dist))
-        print ('class distribution of this dataset :',class_dist)
+        log_string('Ori data to size of :', np.sum(class_dist))
+        log_string ('class distribution of this dataset :',class_dist)
         
         class_dist_new= (percentage*class_dist/100).astype(int)
         for i in range(n_classes):
@@ -74,8 +77,8 @@ def ResizeDataset(path, percentage, n_classes, shuffle):
                 dset.flush()
                 dset_l.flush()
                 data_count+=1
-        print('Finished resizing data to size of :', np.sum(class_dist_new))
-        print ('class distribution of resized dataset :',class_dist_new)
+        log_string('Finished resizing data to size of :', np.sum(class_dist_new))
+        log_string ('class distribution of resized dataset :',class_dist_new)
         fw.close
 
 class SVM(object):
@@ -83,16 +86,16 @@ class SVM(object):
         self.feature_dir = feature_dir
         self.test_path = glob(os.path.join(self.feature_dir, 'test*.h5'))
         if(percent<100):
-            ResizeDataset(path = self.feature_dir, percentage=percent, n_classes=16, shuffle=True)
+            ResizeDataset(path = self.feature_dir, percentage=percent, n_classes=40, shuffle=True)
             self.train_path = glob(os.path.join(self.feature_dir, 'train*%s_resized.h5'%percent))
         else:
             self.train_path = glob(os.path.join(self.feature_dir, 'train*.h5'))  
-
-        print("Loading feature dataset...")
+        log_string(str(self.train_path))
+        log_string("Loading feature dataset...")
         train_data = []
         train_label = []
         for path in self.train_path:
-            print("Loading path: " + str(path))
+            log_string("Loading path: " + str(path))
             f = h5py.File(path, 'r+')
             data = f['data'][:].astype('float32')
             label = f['label'][:].astype('int64')
@@ -101,12 +104,12 @@ class SVM(object):
             train_label.append(label)
         self.train_data = np.concatenate(train_data, axis=0)
         self.train_label = np.concatenate(train_label, axis=0)
-        print("Training set size:", np.size(self.train_data, 0))
+        log_string("Training set size:", np.size(self.train_data, 0))
 
         test_data = []
         test_label = []
         for path in self.test_path:
-            print("Loading path: " + str(path))
+            log_string("Loading path: " + str(path))
             f = h5py.File(path, 'r+')
             data = f['data'][:].astype('float32')
             label = f['label'][:].astype('int64')
@@ -115,11 +118,17 @@ class SVM(object):
             test_label.append(label)
         self.test_data = np.concatenate(test_data, axis=0)
         self.test_label = np.concatenate(test_label, axis=0)
-        print("Testing set size:", np.size(self.test_data, 0))
+        log_string("Testing set size:", np.size(self.test_data, 0))
 
     def classify(self):
         clf = LinearSVC(random_state=0)
         clf.fit(self.train_data, self.train_label)
         result = clf.predict(self.test_data)
         accuracy = np.sum(result==self.test_label).astype(float) / np.size(self.test_label)
-        print("Transfer linear SVM accuracy: {:.2f}%".format(accuracy*100))
+        log_string("Transfer linear SVM accuracy: {:.2f}%".format(accuracy*100))
+
+LOG_FOUT = open('svm_log.txt', 'w')
+def log_string(out_str):
+    LOG_FOUT.write(out_str + '\n')
+    LOG_FOUT.flush()
+    print(out_str)

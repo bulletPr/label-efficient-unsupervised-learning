@@ -355,7 +355,7 @@ class FoldingNet_1024(nn.Module):
         self.quan = Quantization_module()
 
     def forward(self, x):  # input x = batch,3,number of points
-        code, tran = self.encoder(x)  # code = batch,512
+        code, tran = self.encoder(x)  # code = batch,1024
         code = self.quan(code)          # quantization
 
         '''

@@ -11,7 +11,7 @@
 #
 # ----------------------------------------------------------------------------------------------------------------------------
 #
-#      YUWEI CAO - 2020/10/26 13:30 PM 
+#      YUWEI CAO - 2020/11/13 14:32 PM 
 #
 #
 
@@ -31,6 +31,7 @@ from torch.autograd import Variable
 
 #from tensorboardX import SummaryWriter
 from datasets import PartDataset
+import modelnet40_loader
 from pointnet import FoldingNet
 from pointnet import FoldingNet_1024
 
@@ -40,10 +41,11 @@ class Evaluation(object):
         self.batch_size = args.batch_size
         self.gpu_mode = args.gpu_mode
         self.workers = args.workers
+        self.dataset = args.dataset_name
 
         #create outpu directory and files
         #file = [f for f in args.model_path.split('/')]
-        self.experiment_id = '1113143843'
+        self.experiment_id = self.dataset
         cache_root = 'cache/%s' % self.experiment_id
         os.makedirs(cache_root, exist_ok=True)
         self.feature_dir = os.path.join(cache_root, 'features/')
@@ -60,17 +62,27 @@ class Evaluation(object):
         print(str(args))
         print('-Preparing evaluation dataset...')  
         
-        dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, npoints = 2048)
-        self.infer_loader_train = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size,
+        if self.dataset == 'shapenet_part':
+            dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, npoints = 2048)
+            self.infer_loader_train = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size,
                                           shuffle=True, num_workers=self.workers)
 
-        test_dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, train = False, npoints = 2500)
-        self.infer_loader_test = torch.utils.data.DataLoader(test_dataset, batch_size=self.batch_size,
+            test_dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, train = False, npoints = 2500)
+            self.infer_loader_test = torch.utils.data.DataLoader(test_dataset, batch_size=self.batch_size,
                                           shuffle=True, num_workers=self.workers)
+        elif self.dataset == 'modelnet40':
+            dataset = modelnet40_loader.ModelNetH5Dataset(root = 'modelnet40_ply_hdf5_2048', train=True, npoints = 2048)
+            self.infer_loader_train = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size,
+                                          shuffle=True, num_workers=self.workers)
+
+            test_dataset = modelnet40_loader.ModelNetH5Dataset(root = 'modelnet40_ply_hdf5_2048', train = False, npoints = 2048)
+            self.infer_loader_test = torch.utils.data.DataLoader(test_dataset, batch_size=self.batch_size, 
+                                          shuffle=True, num_workers=self.workers)
+
 
         print(len(dataset), len(test_dataset))
-        num_classes = len(dataset.classes)
-        print('classes', num_classes)
+        #num_classes = len(dataset.classes)
+        #print('classes', num_classes)
 
         self.model = FoldingNet_1024()
 
@@ -86,12 +98,12 @@ class Evaluation(object):
 
     def evaluate(self):
         self.model.eval()
-        
         # generate train set for SVM
         #loss_buf = []
         feature_train = []
         lbs_train = []
         n = 0
+        log_string("start preparing svm train dataset")
         for iter, (pts, lbs) in enumerate(self.infer_loader_train):
             pts, lbs = Variable(pts), Variable(lbs[:,0])
             pts = pts.transpose(2,1)
@@ -101,7 +113,10 @@ class Evaluation(object):
             output, _, feature  = self.model(pts) #output of reconstruction network
             #Sprint("shape of feature_train: " + str(lbs.shape))
             feature_train.append(feature.detach().cpu().numpy())  #output feature used to train a svm classifer
-            lbs_train.append(lbs.cpu().numpy())
+            if self.dataset == 'modelnet40':
+                lbs_train.append(lbs.cpu().numpy().squeeze(1))
+            else:
+                lbs_train.append(lbs.cpu().numpy().squeeze)
             if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_train):
                 feature_train = np.concatenate(feature_train, axis=0)
                 lbs_train = np.concatenate(lbs_train, axis=0)
@@ -110,22 +125,23 @@ class Evaluation(object):
                 f['label']=lbs_train
                 f.close()
                 log_string("size of generate traing set: " + str(feature_train.shape) + " ," + str(lbs_train.shape))
-                print(f"Original train set {n} for SVM saved.")
+                log_string(f"Original train set {n} for SVM saved.")
                 feature_train = []
                 lbs_train = []
                 n += 1
             #loss = self.model.get_loss(pts, output)
             #loss_buf.append(loss.detach().cpu().numpy())
         #print(f"Avg loss {np.mean(loss_buf)}.")
-        print("finish generating train set for SVM.")
-        
+        log_string("finish generating train set for SVM.")
+
         # genrate test set for SVM
         #loss_buf = []
         feature_test = []
         lbs_test = []
         n = 0
+        log_string("start preparing svm test dataset")
         for iter, (pts, lbs) in enumerate(self.infer_loader_test):
-            log_string("batch idx: " + str(iter) + " for generating test set for SVM...")
+            #log_string("batch idx: " + str(iter) + " for generating test set for SVM...")
             pts, lbs = Variable(pts), Variable(lbs[:,0])
             pts = pts.transpose(2,1)
             if self.gpu_mode:
@@ -133,7 +149,10 @@ class Evaluation(object):
                 lbs = lbs.cuda()
             output, _, feature = self.model(pts)
             feature_test.append(feature.detach().cpu().numpy())
-            lbs_test.append(lbs.cpu().numpy())
+            if self.dataset == 'modelnet40':
+                lbs_test.append(lbs.cpu().numpy().squeeze(1))
+            else:
+                lbs_test.append(lbs.cpu().numpy().squeeze)
             if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_test):
                 feature_test = np.concatenate(feature_test, axis=0)
                 lbs_test = np.concatenate(lbs_test, axis=0)
@@ -142,14 +161,14 @@ class Evaluation(object):
                 f['label'] = lbs_test
                 f.close()
                 log_string("size of generate test set: " + str(feature_test.shape) + " ," + str(lbs_test.shape))
-                print(f"Test set {n} for SVM saved.")
+                log_string(f"Test set {n} for SVM saved.")
                 feature_test = []
                 lbs_test = []
                 n += 1
             #loss = self.model.get_loss(pts, output)
             #loss_buf.append(loss.detach().cpu().numpy())
         #print(f"Avg loss {np.mean(loss_buf)}.")
-        print("finish generating test set for SVM.")
+        log_string("finish generating test set for SVM.")
 
         return self.feature_dir
 

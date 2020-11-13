@@ -11,7 +11,7 @@
 #
 # ----------------------------------------------------------------------------------------------------------------------
 #
-#      YUWEI CAO - 2020/10/26 17:17 PM 
+#      YUWEI CAO - 2020/11/13 17:17 PM 
 #
 #
 from __future__ import print_function
@@ -29,7 +29,9 @@ from svm import SVM
 
 def get_parser():
     parser = argparse.ArgumentParser(description='Label-efficient Unsupervised Point Cloud Feature Learning')
-    parser.add_argument('--batch_size', type=int, default=16, metavar='batch_size', help='Size of batch)')
+    parser.add_argument('--batch_size', type=int, default=16, metavar='batch_size', help='Size of batch')
+    parser.add_argument('--dataset_name', type=str, default='modelnet40', metavar='dataset_name',
+                        help='classifer dataset')
     parser.add_argument('--workers', type=int, help='Number of data loading workers', default=16)
     parser.add_argument('--gpu_mode', action='store_true', help='Enables CUDA training')
     parser.add_argument('--model_path', type=str, default='./experiment/foldingnet_model_249.pth', metavar='N',
@@ -45,9 +47,10 @@ def get_parser():
 if __name__ == '__main__':
     args = get_parser()
     if args.feature_dir == '':
-      inference = Evaluation(args)
-      feature_dir = inference.evaluate()
+        inference = Evaluation(args)
+        feature_dir = inference.evaluate()
+        print(feature_dir)
     else:
-      feature_dir = args.feature_dir
+        feature_dir = args.feature_dir
     svm = SVM(feature_dir,args.percentage)
     svm.classify()
