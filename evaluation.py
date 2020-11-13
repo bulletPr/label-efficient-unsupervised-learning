@@ -29,16 +29,10 @@ import h5py
 import torch
 
 #from tensorboardX import SummaryWriter
-from model import DGCNN_FoldNet
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-sys.path.append(BASE_DIR)
-sys.path.append(os.path.join(ROOT_DIR, 'datasets'))
-#from ArCH import ArchDataset
-from dataloader import get_dataloader
-from shapenet_dataloader import get_shapenet_dataloader
-sys.path.append(os.path.join(ROOT_DIR, 'utils'))
-from net_utils import Logger
+from datasets import PartDataset
+from pointnet import FoldingNet
+from pointnet import FoldingNet_1024
+
 
 class Evaluation(object):
     def __init__(self, args):
@@ -47,6 +41,7 @@ class Evaluation(object):
         self.dataset_name = args.dataset
         self.data_dir = os.path.join(ROOT_DIR, 'data')
         self.workers = args.workers
+        self.data_resized = args.data_resized
 
         #create outpu directory and files
         #file = [f for f in args.model_path.split('/')]
@@ -84,11 +79,11 @@ class Evaluation(object):
 
 
 
-        self.model = PointNetCls(k = num_classes)
+        self.model = FoldingNet_1024()
 
 
-        optimizer = optim.SGD(classifier.parameters(), lr=0.01, momentum=0.9)
-        classifier.cuda()
+        optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+        model.cuda()
 
         num_batch = len(dataset)/opt.batchSize
 
@@ -113,7 +108,7 @@ class Evaluation(object):
             if self.gpu_mode:
                 pts = pts.cuda()
                 lbs = lbs.cuda()
-            output, feature  = self.model(pts) #output of reconstruction network
+            output, _, feature  = self.model(pts) #output of reconstruction network
             feature_train.append(feature.detach().cpu().numpy().squeeze(1))  #output feature used to train a svm classifer
             lbs_train.append(lbs.cpu().numpy().squeeze(1))
             if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_train):
@@ -124,7 +119,7 @@ class Evaluation(object):
                 f['label']=lbs_train
                 f.close()
                 log_string("size of generate traing set: " + str(feature_train.shape) + " ," + str(lbs_train.shape))
-                print(f"Train set {n} for SVM saved.")
+                print(f"Original train set {n} for SVM saved.")
                 feature_train = []
                 lbs_train = []
                 n += 1
@@ -143,7 +138,7 @@ class Evaluation(object):
             if self.gpu_mode:
                 pts = pts.cuda()
                 lbs = lbs.cuda()
-            output, feature = self.model(pts)
+            output, _, feature = self.model(pts)
             feature_test.append(feature.detach().cpu().numpy().squeeze(1))
             lbs_test.append(lbs.cpu().numpy().squeeze(1))
             if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_train):
@@ -169,7 +164,7 @@ class Evaluation(object):
     def _load_pretrain(self, pretrain):
         state_dict = torch.load(pretrain, map_location='cpu')
         self.model.load_state_dict(state_dict)
-        print(f"Load model from {pretrain}.")
+        print(f"Load model from {pretrain}.")    
 
 
 LOG_FOUT = open(os.path.join(ROOT_DIR, 'LOG','evaluation_log.txt'), 'w')
