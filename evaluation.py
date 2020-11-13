@@ -27,6 +27,7 @@ import numpy as np
 import shutil
 import h5py
 import torch
+from torch.autograd import Variable
 
 #from tensorboardX import SummaryWriter
 from datasets import PartDataset
@@ -38,8 +39,6 @@ class Evaluation(object):
     def __init__(self, args):
         self.batch_size = args.batch_size
         self.gpu_mode = args.gpu_mode
-        self.dataset_name = args.dataset
-        self.data_dir = os.path.join(ROOT_DIR, 'data')
         self.workers = args.workers
         self.data_resized = args.data_resized
 
@@ -65,31 +64,24 @@ class Evaluation(object):
         print(str(args))
         print('-Preparing evaluation dataset...')  
         
-        dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, npoints = 2500)
-        self.infer_loader_train = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size,
-                                          shuffle=True, num_workers=self.num_workers)
+        dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, npoints = 2048)
+        self.infer_loader_train = torch.utils.data.DataLoader(dataset, batch_size=self.batchSize,
+                                          shuffle=True, num_workers=int(self.workers))
 
-        test_dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, train = False, npoints = 2500)
+        test_dataset = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, train = False, npoints = 2048)
         self.infer_loader_test = torch.utils.data.DataLoader(test_dataset, batch_size=self.batch_size,
-                                          shuffle=True, num_workers=self.num_workers)
+                                          shuffle=True, num_workers=self.workers)
 
         print(len(dataset), len(test_dataset))
         num_classes = len(dataset.classes)
         print('classes', num_classes)
 
-
-
         self.model = FoldingNet_1024()
-
-
-        optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-        model.cuda()
-
-        num_batch = len(dataset)/opt.batchSize
+        self.model.cuda()
 
         if args.model_path != '':
             self._load_pretrain(args.model_path)
-
+        
         # load model to gpu
         if self.gpu_mode:
             self.model = self.model.cuda()
@@ -99,18 +91,21 @@ class Evaluation(object):
         self.model.eval()
 
         # generate train set for SVM
-        loss_buf = []
+        #loss_buf = []
         feature_train = []
         lbs_train = []
         n = 0
         for iter, (pts, lbs) in enumerate(self.infer_loader_train):
             #log_string("batch idx: " + str(iter) + " for generating train set for SVM...")
+            pts, lbs = Variable(pts), Variable(lbs[:,0])
+            pts = pts.transpose(2,1)
             if self.gpu_mode:
                 pts = pts.cuda()
                 lbs = lbs.cuda()
             output, _, feature  = self.model(pts) #output of reconstruction network
-            feature_train.append(feature.detach().cpu().numpy().squeeze(1))  #output feature used to train a svm classifer
-            lbs_train.append(lbs.cpu().numpy().squeeze(1))
+            #Sprint("shape of feature_train: " + str(lbs.shape))
+            feature_train.append(feature.detach().cpu().numpy())  #output feature used to train a svm classifer
+            lbs_train.append(lbs.cpu().numpy())            
             if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_train):
                 feature_train = np.concatenate(feature_train, axis=0)
                 lbs_train = np.concatenate(lbs_train, axis=0)
@@ -129,19 +124,21 @@ class Evaluation(object):
         print("finish generating train set for SVM.")
 
         # genrate test set for SVM
-        loss_buf = []
+        #loss_buf = []
         feature_test = []
         lbs_test = []
         n = 0
         for iter, (pts, lbs) in enumerate(self.infer_loader_test):
-            log_string("batch idx: " + str(iter) + " for generating test set for SVM...")
+            #log_string("batch idx: " + str(iter) + " for generating test set for SVM...")
+            pts, lbs = Variable(pts), Variable(lbs[:,0])
+            pts = pts.transpose(2,1)
             if self.gpu_mode:
                 pts = pts.cuda()
                 lbs = lbs.cuda()
             output, _, feature = self.model(pts)
-            feature_test.append(feature.detach().cpu().numpy().squeeze(1))
-            lbs_test.append(lbs.cpu().numpy().squeeze(1))
-            if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_train):
+            feature_test.append(feature.detach().cpu().numpy())
+            lbs_test.append(lbs.cpu().numpy())            
+            if ((iter+1)*self.batch_size % 2048) == 0 or (iter+1)==len(self.infer_loader_test):
                 feature_test = np.concatenate(feature_test, axis=0)
                 lbs_test = np.concatenate(lbs_test, axis=0)
                 f = h5py.File(os.path.join(self.feature_dir, 'test' + str(n) + '.h5'), 'w')

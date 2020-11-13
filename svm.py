@@ -68,6 +68,7 @@ class SVM(object):
 
 
     def ResizeDataset(path, percentage, n_classes, shuffle):
+        print('-Preparing resized evaluation dataset...')  
         path_h5py = os.path.join(path, '*.h5')
         path_h5py_all += glob(path_h5py)
         for h5_name in path_h5py_all:      
