@@ -24,10 +24,14 @@ class ModelNetH5Dataset(object):
         self.root=root
         self.npoints = npoints
         self.h5_files = []
+        self.cat = {}
         if(train):
             list_filename = os.path.join(self.root, '*train*.h5')
         else:
             list_filename = os.path.join(self.root, '*test*.h5')
+        # Read in the list of categories in MODELNET40
+        self.shape_names_file = os.path.join('modelnet40_ply_hdf5_2048', 'shape_names.txt')
+        self.cat = [line.rstrip() for line in open(shape_names_file)]
 
         self.h5_files += glob(list_filename)
         data, labels = load_h5(self.h5_files)

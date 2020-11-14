@@ -179,7 +179,7 @@ class Evaluation(object):
         print(f"Load model from {pretrain}.")    
 
 
-LOG_FOUT = open('evaluation_log.txt', 'w')
+LOG_FOUT = LOG_FOUT = open(os.path.join('output','save_svm_h5data_log.txt'), 'w')
 def log_string(out_str):
     LOG_FOUT.write(out_str + '\n')
     LOG_FOUT.flush()

@@ -24,6 +24,15 @@ import h5py
 import numpy as np
 from glob import glob
 from sklearn.svm import LinearSVC
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+# %matplotlib inline
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+# use seaborn plotting defaults
+import seaborn as sns; sns.set()
+
 
 def ResizeDataset(path, percentage, n_classes, shuffle):
     if path == 'cache/modelnet40/features/':
@@ -81,6 +90,14 @@ def ResizeDataset(path, percentage, n_classes, shuffle):
         log_string ('class distribution of resized dataset :',class_dist_new)
         fw.close
 
+
+# Read in the list of categories in MODELNET40
+def get_category_names():
+    shape_names_file = os.path.join('modelnet40_ply_hdf5_2048', 'shape_names.txt')
+    shape_names = [line.rstrip() for line in open(shape_names_file)]
+    return shape_names
+
+
 class SVM(object):
     def __init__(self, feature_dir, percent=100):
         self.feature_dir = feature_dir
@@ -104,7 +121,7 @@ class SVM(object):
             train_label.append(label)
         self.train_data = np.concatenate(train_data, axis=0)
         self.train_label = np.concatenate(train_label, axis=0)
-        log_string("Training set size:", np.size(self.train_data, 0))
+        log_string("Training set size:" + str(np.size(self.train_data, 0)))
 
         test_data = []
         test_label = []
@@ -118,16 +135,26 @@ class SVM(object):
             test_label.append(label)
         self.test_data = np.concatenate(test_data, axis=0)
         self.test_label = np.concatenate(test_label, axis=0)
-        log_string("Testing set size:", np.size(self.test_data, 0))
+        log_string("Testing set size:" + str(np.size(self.test_data, 0)))
 
     def classify(self):
         clf = LinearSVC(random_state=0)
         clf.fit(self.train_data, self.train_label)
         result = clf.predict(self.test_data)
         accuracy = np.sum(result==self.test_label).astype(float) / np.size(self.test_label)
+        log_string(str(classification_report(self.test_label, result,
+                            target_names=get_category_names())))
+        mat = confusion_matrix(self.test_label, result)
+        plt.figure(figsize=(10, 16))
+        sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False, cmap='YlOrRd',
+            xticklabels=get_category_names(),
+            yticklabels=get_category_names())
+        plt.xlabel('true label')
+        plt.ylabel('predicted label')
+        plt.savefig("output/heatmap_%s.png"%percent, dpi=300)
         log_string("Transfer linear SVM accuracy: {:.2f}%".format(accuracy*100))
 
-LOG_FOUT = open('svm_log.txt', 'w')
+LOG_FOUT = open(os.path.join('output','svm_log.txt'), 'w')
 def log_string(out_str):
     LOG_FOUT.write(out_str + '\n')
     LOG_FOUT.flush()
