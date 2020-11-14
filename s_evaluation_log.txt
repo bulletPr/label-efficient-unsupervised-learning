@@ -1,0 +1,51 @@
+full:
+Training set size: 15990
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 98.04%
+80%:
+Training set size: 12741
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 98.26%
+60%:
+Training set size: 9537
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 98.26%
+50%:
+Training set size: 7964
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 97.98%
+40%:
+Training set size: 6351
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 98.04%
+30%:
+Training set size: 4743
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+/usr/local/lib/python3.6/dist-packages/sklearn/svm/_base.py:947: ConvergenceWarning: Liblinear failed to converge, increase the number of iterations.
+  "the number of iterations.", ConvergenceWarning)
+Transfer linear SVM accuracy: 97.98%
+10%:
+Training set size: 1569
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+Transfer linear SVM accuracy: 98.10%
+1%:
+Training set size: 205
+Loading path: ./cache/1113143843/features/test0.h5
+Testing set size: 1785
+Transfer linear SVM accuracy: 94.57%
