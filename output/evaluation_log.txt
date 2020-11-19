@@ -1,0 +1,18 @@
+start preparing svm train dataset
+size of generate traing set: (2048, 1024) ,(2048,)
+Original train set 0 for SVM saved.
+size of generate traing set: (2048, 1024) ,(2048,)
+Original train set 1 for SVM saved.
+size of generate traing set: (2048, 1024) ,(2048,)
+Original train set 2 for SVM saved.
+size of generate traing set: (2048, 1024) ,(2048,)
+Original train set 3 for SVM saved.
+size of generate traing set: (1648, 1024) ,(1648,)
+Original train set 4 for SVM saved.
+finish generating train set for SVM.
+start preparing svm test dataset
+size of generate test set: (2048, 1024) ,(2048,)
+Test set 0 for SVM saved.
+size of generate test set: (420, 1024) ,(420,)
+Test set 1 for SVM saved.
+finish generating test set for SVM.
